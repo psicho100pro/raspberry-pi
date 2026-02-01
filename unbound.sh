@@ -66,3 +66,6 @@ sudo chmod 644 /var/lib/unbound/root.key /var/lib/unbound/root.hints
 
 sudo unbound-checkconf
 sudo systemctl restart unbound
+
+(crontab -l 2>/dev/null; echo "0 0 1 * * wget https://www.internic.net/domain/named.root -qO /var/lib/unbound/root.hints && chown unbound:unbound /var/lib/unbound/root.hints && systemctl restart unbound") | crontab -
+
