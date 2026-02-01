@@ -1,12 +1,10 @@
 sudo apt update && sudo apt install curl
+sudo apt update && sudo apt install whois -y
+mkpasswd -m bcrypt ******
 
 curl -s -S -L https://raw.githubusercontent.com/AdguardTeam/AdGuardHome/master/scripts/install.sh | sh -s -- -v
 
-sudo apt update && sudo apt install whois -y
-mkpasswd -m bcrypt *______*
-
 sudo useradd -r -s /usr/sbin/nologin adguard
-
 sudo chown -R adguard:adguard /opt/AdGuardHome
 
 sudo find /opt/AdGuardHome -type d -exec chmod 755 {} +
