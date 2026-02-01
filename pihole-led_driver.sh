@@ -64,7 +64,7 @@ gcc -O2 pihole-led.c -o pihole-led
 sudo mv pihole-led /usr/local/bin/pihole-led
 sudo chmod +x /usr/local/bin/pihole-led
 
-sudo tee /etc/systemd/system/pihole-led.service <<EOF
+sudo bash -c 'cat <<EOF > /etc/systemd/system/pihole-led.service
 [Unit]
 Description=Pi-hole Dual LED Monitor (PWR=Red, ACT=Green)
 After=pihole-FTL.service
@@ -77,7 +77,7 @@ CPUSchedulingPolicy=idle
 
 [Install]
 WantedBy=multi-user.target
-EOF
+EOF'
 
 sudo systemctl daemon-reload
 sudo systemctl restart pihole-led.service
