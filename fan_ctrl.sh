@@ -108,6 +108,8 @@ StandardError=journal
 [Install]
 WantedBy=multi-user.target
 
+sudo systemctl daemon-reload
+sudo systemctl restart fan.service
 
 sudo nano fan_view.py
 
