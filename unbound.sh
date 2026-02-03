@@ -21,21 +21,27 @@ server:
     root-hints: "/var/lib/unbound/root.hints"
     auto-trust-anchor-file: "/var/lib/unbound/root.key"
 
-    num-threads: 2
-    msg-cache-size: 128m
-    rrset-cache-size: 256m
-    msg-cache-slabs: 2
-    rrset-cache-slabs: 2
-    infra-cache-slabs: 2
-    key-cache-slabs: 2
+    # Optimalizace pro 4 jádra 3B+
+    num-threads: 4
+    msg-cache-slabs: 4
+    rrset-cache-slabs: 4
+    infra-cache-slabs: 4
+    key-cache-slabs: 4
+
+    # Bezpečnější RAM limity (celkem ~200MB)
+    msg-cache-size: 64m
+    rrset-cache-size: 128m
+
+    # Fix pro requestlist.exceeded
+    num-queries-per-thread: 1024
+    outgoing-range: 4096
 
     cache-min-ttl: 3600
     cache-max-ttl: 86400
     prefetch: yes
     prefetch-key: yes
     serve-expired: yes
-    serve-expired-ttl: 3600
-
+    serve-expired-ttl: 86400
     statistics-interval: 0
     statistics-cumulative: no
     extended-statistics: yes
