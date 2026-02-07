@@ -21,22 +21,19 @@ server:
     root-hints: "/var/lib/unbound/root.hints"
     auto-trust-anchor-file: "/var/lib/unbound/root.key"
 
-    # Optimalizace pro 4 jádra 3B+
     num-threads: 4
     msg-cache-slabs: 4
     rrset-cache-slabs: 4
     infra-cache-slabs: 4
     key-cache-slabs: 4
 
-    # Bezpečnější RAM limity (celkem ~200MB)
     msg-cache-size: 64m
     rrset-cache-size: 128m
 
-    # Fix pro requestlist.exceeded
     num-queries-per-thread: 1024
-    outgoing-range: 4096
+    outgoing-range: 2048
 
-    cache-min-ttl: 3600
+    cache-min-ttl: 1300
     cache-max-ttl: 86400
     prefetch: yes
     prefetch-key: yes
@@ -64,6 +61,7 @@ remote-control:
     control-key-file: "/etc/unbound/unbound_control.key"
     control-cert-file: "/etc/unbound/unbound_control.pem"
 EOF'
+
 
 sudo rm -f /etc/unbound/unbound.conf.d/root-auto-trust-anchor-file.conf
 
