@@ -46,7 +46,6 @@ int main() {
     float current_duty = 0.2;
     float last_temp_target = 0;
 
-    // KICKSTART (2s)
     gpiod_line_set_value(line, 1);
     sleep(KICK_TIME);
 
@@ -59,7 +58,6 @@ int main() {
             if (temp >= TEMP_MAX) {
                 target_duty = 1.0;
             } else if (temp > TEMP_MIN) {
-                // Diskretizácia na 10% kroky (0.2, 0.3, ..., 1.0)
                 float raw_duty = 0.2 + (temp - TEMP_MIN) * 0.8 / (TEMP_MAX - TEMP_MIN);
                 target_duty = roundf(raw_duty * 10.0) / 10.0;
             }
