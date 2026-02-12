@@ -5,6 +5,31 @@ sudo mkdir -p /var/lib/unbound
 sudo wget -O /var/lib/unbound/root.hints https://www.internic.net/domain/named.cache
 
 sudo -u unbound unbound-anchor -a "/var/lib/unbound/root.key"
+sudo chown -R unbound:unbound /var/lib/unbound
+sudo chmod 644 /var/lib/unbound/root.key /var/lib/unbound/root.hints
+
+sudo bash -c 'cat <<EOF > /lib/systemd/system/unbound.service
+[Unit]
+Description=Unbound DNS server
+Documentation=man:unbound(8)
+After=network.target
+Before=nss-lookup.target
+Wants=nss-lookup.target
+
+[Service]
+Type=notify
+Restart=on-failure
+LimitNOFILE=16384
+EnvironmentFile=-/etc/default/unbound
+ExecStartPre=-/usr/libexec/unbound-helper chroot_setup
+ExecStartPre=-/usr/libexec/unbound-helper root_trust_anchor_update
+ExecStart=/usr/sbin/unbound -d \$DAEMON_OPTS
+ExecStopPost=-/usr/libexec/unbound-helper chroot_teardown
+ExecReload=+/bin/kill -HUP \$MAINPID
+
+[Install]
+WantedBy=multi-user.target
+EOF'
 
 sudo bash -c 'cat <<EOF > /etc/unbound/unbound.conf.d/pi-hole.conf
 server:
@@ -27,18 +52,20 @@ server:
     infra-cache-slabs: 4
     key-cache-slabs: 4
 
-    msg-cache-size: 64m
-    rrset-cache-size: 128m
+    msg-cache-size: 128m
+    rrset-cache-size: 256m
 
     num-queries-per-thread: 1024
-    outgoing-range: 2048
+    outgoing-range: 4096
+    jostle-timeout: 200
 
-    cache-min-ttl: 1300
+    cache-min-ttl: 0
     cache-max-ttl: 86400
     prefetch: yes
     prefetch-key: yes
     serve-expired: yes
     serve-expired-ttl: 86400
+    
     statistics-interval: 0
     statistics-cumulative: no
     extended-statistics: yes
@@ -49,7 +76,7 @@ server:
     harden-dnssec-stripped: yes
     harden-below-nxdomain: yes
     qname-minimisation: yes
-    use-caps-for-id: yes
+    use-caps-for-id: no
     edns-buffer-size: 1232
 
 remote-control:
@@ -61,12 +88,6 @@ remote-control:
     control-key-file: "/etc/unbound/unbound_control.key"
     control-cert-file: "/etc/unbound/unbound_control.pem"
 EOF'
-
-
-sudo rm -f /etc/unbound/unbound.conf.d/root-auto-trust-anchor-file.conf
-
-sudo chown -R unbound:unbound /var/lib/unbound
-sudo chmod 644 /var/lib/unbound/root.key /var/lib/unbound/root.hints
 
 sudo unbound-checkconf
 sudo systemctl restart unbound
