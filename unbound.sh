@@ -47,36 +47,30 @@ server:
     auto-trust-anchor-file: "/var/lib/unbound/root.key"
 
 server:
-    # Vlákna a paralelizace (slabs musí odpovídat počtu vláken)
     num-threads: 4
     msg-cache-slabs: 4
     rrset-cache-slabs: 4
     infra-cache-slabs: 4
     key-cache-slabs: 4
 
-    # Velikost cache (celkem 384 MB)
     msg-cache-size: 128m
     rrset-cache-size: 256m
 
-    # Kapacita fronty a síťový stack (řeší 'exceeded' chyby)
     num-queries-per-thread: 2048
     outgoing-range: 8192
     jostle-timeout: 200
     edns-buffer-size: 1232
 
-    # Caching strategie
     cache-min-ttl: 0
     cache-max-ttl: 86400
     prefetch: yes
     prefetch-key: yes
     aggressive-nsec: yes
     
-    # Odpovědi při nedostupnosti (serve-expired)
     serve-expired: yes
     serve-expired-ttl: 86400
     serve-expired-reply-ttl: 30
 
-    # Zabezpečení a soukromí
     qname-minimisation: yes
     hide-identity: yes
     hide-version: yes
@@ -85,7 +79,6 @@ server:
     harden-below-nxdomain: yes
     use-caps-for-id: no
 
-    # Monitoring
     statistics-interval: 0
     statistics-cumulative: no
     extended-statistics: yes
