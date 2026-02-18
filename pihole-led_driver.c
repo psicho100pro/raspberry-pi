@@ -1,4 +1,4 @@
-sudo nano pihole-led.c
+nano pihole_led_monitor.c
 
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -13,12 +13,21 @@ void blink(const char* led) {
     snprintf(path, sizeof(path), "/sys/class/leds/%s/brightness", led);
     int fd = open(path, O_WRONLY);
     if (fd >= 0) {
-        write(fd, "1", 1); close(fd);
+        // ZAPNOUT - velmi kratky impuls (20ms)
+        write(fd, "1", 1); 
+        close(fd);
+        
         usleep(50000); 
+        
+        // VYPNOUT
         fd = open(path, O_WRONLY);
         if (fd >= 0) {
-            write(fd, "0", 1); close(fd);
+            write(fd, "0", 1); 
+            close(fd);
         }
+
+        // POVINNA PAUZA (100ms) - zajisti, ze LED pri zatezi nesplyne do trvaleho svitu
+        usleep(100000); 
     }
 }
 
@@ -27,13 +36,16 @@ int main() {
     char line[1024];
     struct stat st;
     long last_size = 0;
+    const char* log_path = "/var/log/pihole/pihole.log";
 
+    // Vypnuti vychozich triggeru
     system("echo none > /sys/class/leds/PWR/trigger");
     system("echo none > /sys/class/leds/ACT/trigger");
 
     while (1) {
-        fp = fopen("/var/log/pihole/pihole.log", "r");
+        fp = fopen(log_path, "r");
         if (!fp) { sleep(1); continue; }
+
         fseek(fp, 0, SEEK_END);
         last_size = ftell(fp);
 
@@ -49,9 +61,10 @@ int main() {
                     blink("ACT");
                 }
             } else {
-                if (stat("/var/log/pihole/pihole.log", &st) == 0 && st.st_size < last_size) break;
+                // Osetreni rotace logu
+                if (stat(log_path, &st) == 0 && st.st_size < last_size) break; 
                 last_size = st.st_size;
-                usleep(40000); 
+                usleep(10000); 
                 clearerr(fp);
             }
         }
@@ -60,7 +73,8 @@ int main() {
     return 0;
 }
 
-gcc -O2 pihole-led.c -o pihole-led
+gcc -O2 pihole_led_monitor.c -o pihole-led
+
 sudo mv pihole-led /usr/local/bin/pihole-led
 sudo chmod +x /usr/local/bin/pihole-led
 
