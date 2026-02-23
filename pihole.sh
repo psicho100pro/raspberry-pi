@@ -35,4 +35,8 @@ sudo bash -c 'cat <<EOF > /etc/pihole/pihole.toml
 port = "80,[::]:80"
 EOF'
 
+sudo systemctl daemon-reload
+sudo systemctl enable pihole-FTL
+sudo systemctl restart pihole-FTL
+
 sudo usermod -aG pihole ******
