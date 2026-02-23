@@ -59,6 +59,10 @@ WantedBy=multi-user.target
 Alias=redis.service
 EOF'
 
+sudo systemctl daemon-reload
+sudo systemctl enable redis-server
+sudo systemctl restart redis-server
+
 wget -O- rspamd.com | gpg --dearmor | sudo tee /usr/share/keyrings/rspamd.gpg > /dev/null
 echo "deb [signed-by=/usr/share/keyrings/rspamd.gpg] rspamd.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/rspamd.list
 
@@ -87,6 +91,9 @@ RestartSec=5s
 WantedBy=multi-user.target
 EOF'
 
+sudo systemctl daemon-reload
+sudo systemctl enable rspamd
+sudo systemctl start rspamd
 
 sudo mkdir -p /etc/rspamd/local.d
 echo 'bind_socket = "0.0.0.0:11334";' | sudo tee /etc/rspamd/local.d/worker-controller.inc
