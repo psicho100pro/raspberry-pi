@@ -31,6 +31,10 @@ ExecReload=+/bin/kill -HUP \$MAINPID
 WantedBy=multi-user.target
 EOF'
 
+sudo systemctl daemon-reload
+sudo systemctl enable unbound
+sudo systemctl restart unbound
+
 sudo bash -c 'cat <<EOF > /etc/unbound/unbound.conf.d/pi-hole.conf
 server:
     verbosity: 0
