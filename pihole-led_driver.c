@@ -7,69 +7,90 @@ nano pihole_led_monitor.c
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/inotify.h>
 
-void blink(const char* led) {
-    char path[64];
-    snprintf(path, sizeof(path), "/sys/class/leds/%s/brightness", led);
-    int fd = open(path, O_WRONLY);
-    if (fd >= 0) {
-        // ZAPNOUT - velmi kratky impuls (20ms)
-        write(fd, "1", 1); 
-        close(fd);
-        
-        usleep(50000); 
-        
-        // VYPNOUT
-        fd = open(path, O_WRONLY);
-        if (fd >= 0) {
-            write(fd, "0", 1); 
-            close(fd);
-        }
+#define LOG_PATH "/var/log/pihole/pihole.log"
+#define EVENT_SIZE (sizeof(struct inotify_event))
+#define BUF_LEN (1024 * (EVENT_SIZE + 16))
 
-        // POVINNA PAUZA (100ms) - zajisti, ze LED pri zatezi nesplyne do trvaleho svitu
-        usleep(100000); 
-    }
+int fd_pwr = -1;
+int fd_act = -1;
+
+void blink(int led_fd) {
+    if (led_fd < 0) return;
+
+    pwrite(led_fd, "1", 1, 0);
+    usleep(15000);
+    
+    pwrite(led_fd, "0", 1, 0);
+    usleep(25000);
 }
 
 int main() {
+    int inotify_fd, wd;
+    char buffer[BUF_LEN];
     FILE *fp;
     char line[1024];
-    struct stat st;
-    long last_size = 0;
-    const char* log_path = "/var/log/pihole/pihole.log";
 
-    // Vypnuti vychozich triggeru
     system("echo none > /sys/class/leds/PWR/trigger");
     system("echo none > /sys/class/leds/ACT/trigger");
 
+    fd_pwr = open("/sys/class/leds/PWR/brightness", O_WRONLY);
+    fd_act = open("/sys/class/leds/ACT/brightness", O_WRONLY);
+
+    inotify_fd = inotify_init();
+    if (inotify_fd < 0) {
+        perror("inotify_init");
+        return 1;
+    }
+
     while (1) {
-        fp = fopen(log_path, "r");
-        if (!fp) { sleep(1); continue; }
+        fp = fopen(LOG_PATH, "r");
+        if (!fp) {
+            sleep(1);
+            continue;
+        }
 
         fseek(fp, 0, SEEK_END);
-        last_size = ftell(fp);
 
-        while (1) {
-            if (fgets(line, sizeof(line), fp)) {
-                if (strstr(line, "blocked") || strstr(line, "gravity")) {
-                    blink("PWR");
-                } 
-                else if (strstr(line, "query[") || 
-                         strstr(line, "cached") || 
-                         strstr(line, "forwarded") || 
-                         strstr(line, "reply")) {
-                    blink("ACT");
+        wd = inotify_add_watch(inotify_fd, LOG_PATH, IN_MODIFY | IN_MOVE_SELF | IN_IGNORED);
+
+        int run_watch = 1;
+        while (run_watch) {
+            int length = read(inotify_fd, buffer, BUF_LEN);
+            if (length < 0) break;
+
+            int i = 0;
+            while (i < length) {
+                struct inotify_event *event = (struct inotify_event *)&buffer[i];
+                
+                if (event->mask & IN_MODIFY) {
+                    while (fgets(line, sizeof(line), fp)) {
+                        if (strstr(line, "blocked") || strstr(line, "gravity")) {
+                            blink(fd_pwr);
+                        } else if (strstr(line, "query[") || strstr(line, "forwarded") || 
+                                   strstr(line, "cached") || strstr(line, "reply")) {
+                            blink(fd_act);
+                        }
+                    }
+                    clearerr(fp); 
                 }
-            } else {
-                // Osetreni rotace logu
-                if (stat(log_path, &st) == 0 && st.st_size < last_size) break; 
-                last_size = st.st_size;
-                usleep(10000); 
-                clearerr(fp);
+                
+                if ((event->mask & IN_MOVE_SELF) || (event->mask & IN_IGNORED)) {
+                    run_watch = 0;
+                }
+                i += EVENT_SIZE + event->len;
             }
         }
+        
+        inotify_rm_watch(inotify_fd, wd);
         fclose(fp);
+        usleep(100000); // Kratka pauza pred restartem watcheru
     }
+
+    close(inotify_fd);
+    if (fd_pwr >= 0) close(fd_pwr);
+    if (fd_act >= 0) close(fd_act);
     return 0;
 }
 
