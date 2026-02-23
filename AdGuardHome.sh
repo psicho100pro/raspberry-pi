@@ -46,5 +46,6 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF'
 
-sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+sudo systemctl enable AdGuardHome
 sudo systemctl restart AdGuardHome
