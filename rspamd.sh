@@ -100,16 +100,6 @@ echo 'bind_socket = "0.0.0.0:11334";' | sudo tee /etc/rspamd/local.d/worker-cont
 echo 'password = "****";' | sudo tee -a /etc/rspamd/local.d/worker-controller.inc
 echo 'servers = "127.0.0.1:6379";' | sudo tee /etc/rspamd/local.d/redis.conf
 
-sudo bash -c 'cat <<EOF > /etc/rspamd/local.d/multimap.conf
-GITHUB_SENDER_BLACKLIST {
-    type = "from";
-    filter = "email";
-    map = "https://raw.githubusercontent.com/marco-acorte/antispam-it/main/antispam-emails.txt";
-    score = 15.0;
-    description = "Externí blacklist z GitHubu";
-}
-EOF'
-
 sudo bash -c 'cat <<EOF > /etc/rspamd/local.d/classifier-bayes.conf
 backend = "redis";
 autolearn = true;
@@ -120,7 +110,8 @@ EOF'
 sudo bash -c 'cat <<EOF > /etc/rspamd/local.d/options.inc
 map_watch_interval = 1209600;
 rules_update_interval = "336h";
-
+chunk_size = 16k;
+max_memory_usage = 128M;
 max_urls = 50;
 max_images = 10;
 max_message = 20M;
