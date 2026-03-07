@@ -10,6 +10,7 @@ sudo nano fan_ctrl.c
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <math.h>
+#include <time.h>
 
 #define CHIP "gpiochip4"
 #define PIN 18
@@ -20,9 +21,11 @@ sudo nano fan_ctrl.c
 #define KICK_TIME 2        
 #define SHM_PATH "/fan_status"
 
+#define START_HOUR 6
+#define STOP_HOUR 21
+
 typedef struct {
-    float temp;
-    float duty;
+    float duty; // Reportujeme pouze otáčky (0.0 až 1.0)
 } fan_state_t;
 
 float get_temp() {
@@ -34,6 +37,12 @@ float get_temp() {
     return temp_raw / 1000.0;
 }
 
+int is_operating_time() {
+    time_t now = time(NULL);
+    struct tm *tm_info = localtime(&now);
+    return (tm_info->tm_hour >= START_HOUR && tm_info->tm_hour < STOP_HOUR);
+}
+
 int main() {
     struct gpiod_chip *chip = gpiod_chip_open_by_name(CHIP);
     struct gpiod_line *line = gpiod_chip_get_line(chip, PIN);
@@ -43,31 +52,46 @@ int main() {
     ftruncate(shm_fd, sizeof(fan_state_t));
     fan_state_t *state = mmap(0, sizeof(fan_state_t), PROT_WRITE, MAP_SHARED, shm_fd, 0);
 
-    float current_duty = 0.2;
+    float current_duty = 0.0;
     float last_temp_target = 0;
-
-    gpiod_line_set_value(line, 1);
-    sleep(KICK_TIME);
+    int was_off = 1;
 
     while (1) {
         float temp = get_temp();
         
-        if (fabs(temp - last_temp_target) > HYSTERESIS) {
-            float target_duty = 0.2;
-
-            if (temp >= TEMP_MAX) {
-                target_duty = 1.0;
-            } else if (temp > TEMP_MIN) {
-                float raw_duty = 0.2 + (temp - TEMP_MIN) * 0.8 / (TEMP_MAX - TEMP_MIN);
-                target_duty = roundf(raw_duty * 10.0) / 10.0;
+        if (is_operating_time()) {
+            if (was_off) {
+                gpiod_line_set_value(line, 1);
+                sleep(KICK_TIME);
+                was_off = 0;
+                current_duty = 0.2;
             }
 
-            current_duty = target_duty;
-            last_temp_target = temp; 
+            if (fabs(temp - last_temp_target) > HYSTERESIS) {
+                float target_duty = 0.2;
+
+                if (temp >= TEMP_MAX) {
+                    target_duty = 1.0;
+                } else if (temp > TEMP_MIN) {
+                    float raw_duty = 0.2 + (temp - TEMP_MIN) * 0.8 / (TEMP_MAX - TEMP_MIN);
+                    target_duty = roundf(raw_duty * 10.0) / 10.0;
+                }
+
+                current_duty = target_duty;
+                last_temp_target = temp; 
+            }
+        } else {
+            current_duty = 0.0;
+            was_off = 1;
         }
 
-        state->temp = temp;
         state->duty = current_duty;
+
+        if (current_duty <= 0.0) {
+            gpiod_line_set_value(line, 0);
+            sleep(1); 
+            continue;
+        }
 
         long period_us = 1000000 / FREQ;
         long on_us = period_us * current_duty;
