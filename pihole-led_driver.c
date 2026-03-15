@@ -1,5 +1,5 @@
 nano pihole_led_monitor.c
-
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            pihole_led_monitor.c
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,9 +32,9 @@ void* led_worker(void* arg) {
             __atomic_sub_fetch(queue, 1, __ATOMIC_SEQ_CST);
             if (fd >= 0) {
                 pwrite(fd, "1", 1, 0);
-                usleep(40000);  // Svit (zůstává 40ms)
+                usleep(40000);
                 pwrite(fd, "0", 1, 0);
-                usleep(80000);  // Dosvit/pauza (zůstává 80ms)
+                usleep(80000);
             }
         } else {
             usleep(20000);
