@@ -4,59 +4,28 @@ sudo apt install -y redis-server
 sudo systemctl enable redis-server
 sudo systemctl start redis-server
 
-sudo bash -c 'cat <<EOF > /etc/systemd/system/redis-server.service
+sudo bash -c 'cat <<EOF > /etc/systemd/system/rspamd.service
 [Unit]
-Description=Advanced key-value store (Backend for Rspamd)
-After=network-online.target
-Before=rspamd.service
-Documentation=http://redis.io/documentation, man:redis-server(1)
+Description=rapid spam filtering system
+After=network-online.target redis-server.service pihole-FTL.service
+Wants=redis-server.service pihole-FTL.service
+Documentation=https://rspamd.com
 
 [Service]
-Type=notify
-ExecStart=/usr/bin/redis-server /etc/redis/redis.conf --supervised systemd
-PIDFile=/run/redis/redis-server.pid
-TimeoutStopSec=0
+Type=simple
+LimitNOFILE=1048576
+NonBlocking=true
+ExecStart=/usr/bin/rspamd -c /etc/rspamd/rspamd.conf -f
+ExecReload=/bin/kill -HUP \$MAINPID
+User=_rspamd
+Group=_rspamd
+RuntimeDirectory=rspamd
+RuntimeDirectoryMode=0755
 Restart=always
 RestartSec=5s
-User=redis
-RuntimeDirectory=redis
-RuntimeDirectoryMode=2755
-
-UMask=007
-PrivateTmp=true
-LimitNOFILE=65535
-PrivateDevices=true
-ProtectHome=true
-ProtectSystem=strict
-ReadWritePaths=-/var/lib/redis
-ReadWritePaths=-/var/log/redis
-ReadWritePaths=-/var/run/redis
-CapabilityBoundingSet=
-LockPersonality=true
-MemoryDenyWriteExecute=true
-NoNewPrivileges=true
-PrivateUsers=true
-ProtectClock=true
-ProtectControlGroups=true
-ProtectHostname=true
-ProtectKernelLogs=true
-ProtectKernelModules=true
-ProtectKernelTunables=true
-ProtectProc=invisible
-RemoveIPC=true
-RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
-RestrictNamespaces=true
-RestrictRealtime=true
-RestrictSUIDSGID=true
-SystemCallArchitectures=native
-SystemCallFilter=@system-service
-SystemCallFilter=~ @privileged @resources
-NoExecPaths=/
-ExecPaths=/usr/bin/redis-server /usr/lib /lib
 
 [Install]
 WantedBy=multi-user.target
-Alias=redis.service
 EOF'
 
 sudo systemctl daemon-reload
